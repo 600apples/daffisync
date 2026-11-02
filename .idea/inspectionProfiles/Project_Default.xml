@@ -1,0 +1,57 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="Eslint" enabled="true" level="WARNING" enabled_by_default="true" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <list>
+          <option value="pbr" />
+          <option value="alembic" />
+          <option value="castellan" />
+          <option value="defusedxml" />
+          <option value="eventlet" />
+          <option value="greenlet" />
+          <option value="lxml" />
+          <option value="netaddr" />
+          <option value="oslo.config" />
+          <option value="oslo.context" />
+          <option value="oslo.db" />
+          <option value="oslo.i18n" />
+          <option value="oslo.log" />
+          <option value="oslo.messaging" />
+          <option value="oslo.middleware" />
+          <option value="oslo.policy" />
+          <option value="oslo.privsep" />
+          <option value="oslo.reports" />
+          <option value="oslo.rootwrap" />
+          <option value="oslo.serialization" />
+          <option value="oslo.service" />
+          <option value="oslo.upgradecheck" />
+          <option value="oslo.utils" />
+          <option value="oslo.concurrency" />
+          <option value="osprofiler" />
+          <option value="paramiko" />
+          <option value="Paste" />
+          <option value="PasteDeploy" />
+          <option value="pyparsing" />
+          <option value="python-neutronclient" />
+          <option value="keystoneauth1" />
+          <option value="keystonemiddleware" />
+          <option value="requests" />
+          <option value="tenacity" />
+          <option value="Routes" />
+          <option value="SQLAlchemy" />
+          <option value="SQLAlchemy-Utils" />
+          <option value="stevedore" />
+          <option value="tooz" />
+          <option value="python-cinderclient" />
+          <option value="python-novaclient" />
+          <option value="WebOb" />
+          <option value="jsonschema" />
+          <option value="openstacksdk" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="TsLint" enabled="true" level="WARNING" enabled_by_default="true" />
+  </profile>
+</component>
