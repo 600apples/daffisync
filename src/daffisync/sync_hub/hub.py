@@ -15,8 +15,8 @@ from daffisync._utils import generate_self_signed_tls, silence_native_stdio
 from daffisync.backends.base import StoreBackendBase
 from daffisync.backends.memory import InMemoryBackend
 from daffisync.constants import HUB_APP_NAME
-from daffisync.serializers.base import SerializerBase
-from daffisync.serializers.pickle_serializer import PickleSerializer
+from daffisync.marshallers.base import MarshallBase
+from daffisync.marshallers.pickle_marshaler import PickleMarshaler
 from daffisync.sync_hub.ops import SyncHubOps
 from daffisync.sync_hub.subscriptions import SubscriptionRegistry
 from daffisync.transport.base import TransportBase
@@ -33,8 +33,8 @@ class SyncHub:
     Optional:
         backend_storage — :class:`~daffisync.backends.base.StoreBackendBase`
         (default :class:`~daffisync.backends.memory.InMemoryBackend`)
-        serializer — :class:`~daffisync.serializers.base.SerializerBase`
-        (default :class:`~daffisync.serializers.pickle_serializer.PickleSerializer`)
+        marshaller — :class:`~daffisync.marshallers.base.MarshallBase`
+        (default :class:`~daffisync.marshallers.pickle_marshaler.PickleMarshaler`)
 
     Remote operations are handled by the embedded :class:`SyncHubOps`
     callback singleton.  Peer updates are pushed to subscribed clients via
@@ -45,7 +45,7 @@ class SyncHub:
         self,
         transport: TransportBase,
         backend_storage: StoreBackendBase | None = None,
-        serializer: SerializerBase | None = None,
+        marshaller: MarshallBase | None = None,
     ) -> None:
         if not isinstance(transport, TransportBase):
             raise TypeError(
@@ -61,17 +61,17 @@ class SyncHub:
                 f"got {type(backend_storage)!r}"
             )
 
-        if serializer is None:
-            serializer = PickleSerializer()
-        elif not isinstance(serializer, SerializerBase):
+        if marshaller is None:
+            marshaller = PickleMarshaler()
+        elif not isinstance(marshaller, MarshallBase):
             raise TypeError(
-                "serializer must be an instance of SerializerBase, "
-                f"got {type(serializer)!r}"
+                "marshaller must be an instance of MarshallBase, "
+                f"got {type(marshaller)!r}"
             )
 
         self.transport = transport
         self.backend_storage = backend_storage
-        self.serializer = serializer
+        self.marshaller = marshaller
         self.subscriptions = SubscriptionRegistry()
 
         # Embed the @callback singleton and bind this aggregator into it.
@@ -169,17 +169,11 @@ class SyncHub:
         self._connection = None
 
         if self._client is not None:
-            try:
-                self._client.stop()
-            except Exception:
-                logger.debug("daffi Client.stop() raised", exc_info=True)
+            self._client.stop()
             self._client = None
 
         if self._router is not None:
-            try:
-                self._router.stop()
-            except Exception:
-                logger.debug("daffi Router.stop() raised", exc_info=True)
+            self._router.stop()
             self._router = None
 
         if self._sock_dir is not None:

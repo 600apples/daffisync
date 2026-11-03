@@ -3,7 +3,6 @@ from typing import Any, Iterable
 
 from daffisync.backends.base import StoreBackendBase, pack_item, unpack_item
 from daffisync.protocol.enums import StructureKind
-from daffisync.protocol.models import KeyType
 
 
 class InMemoryBackend(StoreBackendBase):
@@ -40,7 +39,6 @@ class InMemoryBackend(StoreBackendBase):
         structure_name: str,
         kind: StructureKind,
         key: Any,
-        key_type: KeyType | None,
     ) -> tuple[bytes | None, int]:
         with self._lock:
             structure = self._bucket(structure_name, kind)
@@ -53,23 +51,21 @@ class InMemoryBackend(StoreBackendBase):
         structure_name: str,
         kind: StructureKind,
         key: Any,
-        key_type: KeyType | None,
-        data: bytes | None,
+        value: bytes | None,
         revision: int,
     ) -> None:
-        if data is not None and not isinstance(data, bytes):
-            raise TypeError("Item data must be bytes or None")
+        if value is not None and not isinstance(value, bytes):
+            raise TypeError("Item value must be bytes or None")
 
         with self._lock:
             structure = self._bucket(structure_name, kind, create=True)
-            structure[key] = pack_item(data, revision)
+            structure[key] = pack_item(value, revision)
 
     def item_exists(
         self,
         structure_name: str,
         kind: StructureKind,
         key: Any,
-        key_type: KeyType | None,
     ) -> bool:
         with self._lock:
             structure = self._bucket(structure_name, kind)
@@ -83,27 +79,11 @@ class InMemoryBackend(StoreBackendBase):
         structure_name: str,
         kind: StructureKind,
         key: Any,
-        key_type: KeyType | None,
     ) -> None:
         with self._lock:
             structure = self._bucket(structure_name, kind)
             if structure is not None:
                 structure.pop(key, None)
-
-    def move_item(
-        self,
-        structure_name: str,
-        kind: StructureKind,
-        src_key: Any,
-        src_key_type: KeyType | None,
-        dst_key: Any,
-        dst_key_type: KeyType | None,
-    ) -> None:
-        with self._lock:
-            structure = self._bucket(structure_name, kind)
-            if structure is None or src_key not in structure:
-                raise KeyError((kind, structure_name, src_key))
-            structure[dst_key] = structure.pop(src_key)
 
     def create_location(self, structure_name: str, kind: StructureKind) -> None:
         with self._lock:
@@ -121,23 +101,9 @@ class InMemoryBackend(StoreBackendBase):
         self,
         structure_name: str,
         kind: StructureKind,
-    ) -> Iterable[tuple[Any, KeyType | None]]:
+    ) -> Iterable[Any]:
         with self._lock:
             structure = self._bucket(structure_name, kind)
             if structure is None:
                 return []
-            return [(key, _infer_key_type(key)) for key in structure.keys()]
-
-
-def _infer_key_type(key: Any) -> KeyType | None:
-    if key is None:
-        return None
-    if type(key) is bool:
-        return KeyType.BOOL
-    if type(key) is int:
-        return KeyType.INT
-    if type(key) is float:
-        return KeyType.FLOAT
-    if type(key) is str:
-        return KeyType.STR
-    return None
+            return list(structure.keys())

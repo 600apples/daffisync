@@ -31,23 +31,23 @@ class StructureOps:
             serde=SerdeFormat.OPAQUE,
         )
 
-    def create_structure(self, raw: bytes) -> Any:
+    def create_structure(self, raw: bytes | str) -> Any:
         return self._rpc().create_structure(raw)
 
-    def delete_structure(self, raw: bytes) -> Any:
+    def delete_structure(self, raw: bytes | str) -> Any:
         return self._rpc().delete_structure(raw)
 
-    def create_item(self, raw: bytes) -> Any:
+    def create_item(self, raw: bytes | str) -> Any:
         return self._rpc().create_item(raw)
 
-    def update_item(self, raw: bytes) -> Any:
+    def update_item(self, raw: bytes | str) -> Any:
         return self._rpc().update_item(raw)
 
-    def delete_item(self, raw: bytes) -> Any:
+    def delete_item(self, raw: bytes | str) -> Any:
         return self._rpc().delete_item(raw)
 
-    def subscribe(self, raw: bytes) -> Any:
+    def subscribe(self, raw: bytes | str) -> Any:
         return self._rpc().subscribe(raw)
 
-    def reconcile(self, raw: bytes) -> Any:
+    def reconcile(self, raw: bytes | str) -> Any:
         return self._rpc().reconcile(raw)

@@ -1,21 +1,20 @@
-"""Wire framing and metadata (not value payloads).
+"""Wire framing and metadata.
 
-Value bytes use :mod:`daffisync.serializers` (e.g. PickleSerializer).
-This package owns message envelopes and structure addresses.
+Key/value data use :mod:`daffisync.marshallers` (OPAQUE ``bytes`` or ``str``).
+Item keys travel in the payload; metadata carries ``key_length``
+(relative to payload start).
 """
 
 from daffisync.protocol.enums import KindFlag, StructureKind
 from daffisync.protocol.message import Message, MessageParser
 from daffisync.protocol.metadata import MessageMetadata, MetadataParser
 from daffisync.protocol.models import (
-    KeyType,
     StructureAddress,
     decode_address,
     encode_address,
 )
 
 __all__ = [
-    "KeyType",
     "KindFlag",
     "Message",
     "MessageMetadata",

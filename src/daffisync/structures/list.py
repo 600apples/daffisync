@@ -2,9 +2,9 @@ from collections.abc import MutableSequence
 from typing import Any
 
 from ..constants import DEFAULT_TIMEOUT
+from ..marshallers.base import MarshallBase
 from ..protocol.enums import StructureKind
 from ..protocol.models import StructureAddress
-from ..serializers.base import SerializerBase
 from ..transport.base import TransportBase
 from .base import BaseStructure
 
@@ -19,13 +19,13 @@ class List(BaseStructure, MutableSequence):
         name: str,
         transport: TransportBase,
         timeout: int = DEFAULT_TIMEOUT,
-        serializer: SerializerBase | None = None,
+        marshaller: MarshallBase | None = None,
     ) -> None:
         super().__init__(
             name=name,
             transport=transport,
             timeout=timeout,
-            serializer=serializer,
+            marshaller=marshaller,
         )
         self._items: list[Any] = []
         self._revisions: dict[int, int] = {}
@@ -46,26 +46,29 @@ class List(BaseStructure, MutableSequence):
     def revision_snapshot(self) -> dict[Any, int]:
         return dict(self._revisions)
 
-    def apply_remote(self, address: StructureAddress, value: Any) -> None:
-        index = address.python_key()
-        if type(index) is not int:
+    def apply_remote(
+        self,
+        address: StructureAddress,
+        key: Any,
+        value: Any,
+    ) -> None:
+        if type(key) is not int:
             raise TypeError("List apply_remote expects int position")
-        current = self._revisions.get(index, 0)
+        current = self._revisions.get(key, 0)
         if address.revision < current:
             return
-        while len(self._items) <= index:
+        while len(self._items) <= key:
             self._items.append(None)
-        self._items[index] = value
-        self._revisions[index] = address.revision
+        self._items[key] = value
+        self._revisions[key] = address.revision
 
-    def forget_remote(self, address: StructureAddress) -> None:
-        index = address.python_key()
-        if type(index) is not int or index < 0 or index >= len(self._items):
+    def forget_remote(self, address: StructureAddress, key: Any) -> None:
+        if type(key) is not int or key < 0 or key >= len(self._items):
             return
-        if address.revision < self._revisions.get(index, 0):
+        if address.revision < self._revisions.get(key, 0):
             return
-        del self._items[index]
-        self._rebuild_revisions_after_delete(index)
+        del self._items[key]
+        self._rebuild_revisions_after_delete(key)
 
     def _rebuild_revisions_after_delete(self, deleted_index: int) -> None:
         updated: dict[int, int] = {}
@@ -92,7 +95,7 @@ class List(BaseStructure, MutableSequence):
         self.ops.update_item(
             self._encode_message(
                 key=index,
-                payload=self._mutation_payload(value=value),
+                value_payload=self._mutation_payload(value=value),
             )
         )
         self._items[index] = value
@@ -108,7 +111,7 @@ class List(BaseStructure, MutableSequence):
         self.ops.delete_item(
             self._encode_message(
                 key=index,
-                payload=self._mutation_payload(),
+                value_payload=self._mutation_payload(),
             )
         )
         del self._items[index]
@@ -119,7 +122,7 @@ class List(BaseStructure, MutableSequence):
         self.ops.create_item(
             self._encode_message(
                 key=index,
-                payload=self._mutation_payload(value=value),
+                value_payload=self._mutation_payload(value=value),
             )
         )
         self._items.insert(index, value)

@@ -8,10 +8,10 @@ from typing import Any
 
 @dataclass
 class MutationEnvelope:
-    """Client → hub mutation payload (origin + Python value).
+    """Client → hub mutation value payload (origin + Python value).
 
-    The hub stores ``serializer.serialize(value)`` as raw item bytes and
-    the revision in a separate sidecar — never a wrapped record.
+    Carried in the message value slice (after any marshalled key). The hub
+    stores ``marshall_value(value)`` with a packed revision.
     """
 
     origin: str

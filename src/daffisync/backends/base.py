@@ -3,7 +3,6 @@ from abc import ABCMeta, abstractmethod
 from typing import Any, Iterable
 
 from daffisync.protocol.enums import StructureKind
-from daffisync.protocol.models import KeyType
 
 _REVISION_STRUCT = struct.Struct("!q")
 REVISION_HEADER_SIZE = _REVISION_STRUCT.size
@@ -34,6 +33,7 @@ class StoreBackendBase(metaclass=ABCMeta):
     """Abstract interface implemented by DaffiSync storage backends.
 
     Each item is one blob: big-endian int64 revision + optional value bytes.
+    Keys are opaque Python objects (whatever ``marshall_key`` round-trips).
     """
 
     @abstractmethod
@@ -42,7 +42,6 @@ class StoreBackendBase(metaclass=ABCMeta):
         structure_name: str,
         kind: StructureKind,
         key: Any,
-        key_type: KeyType | None,
     ) -> tuple[bytes | None, int]:
         """Return ``(value_bytes, revision)``.
 
@@ -56,13 +55,12 @@ class StoreBackendBase(metaclass=ABCMeta):
         structure_name: str,
         kind: StructureKind,
         key: Any,
-        key_type: KeyType | None,
-        data: bytes | None,
+        value: bytes | None,
         revision: int,
     ) -> None:
         """Store value bytes and revision as one packed blob.
 
-        Pass ``data=None`` to write a tombstone (revision header only).
+        Pass ``value=None`` to write a tombstone (revision header only).
         """
 
     @abstractmethod
@@ -71,7 +69,6 @@ class StoreBackendBase(metaclass=ABCMeta):
         structure_name: str,
         kind: StructureKind,
         key: Any,
-        key_type: KeyType | None,
     ) -> bool:
         """Return whether value bytes exist for an item (not just a tombstone)."""
 
@@ -81,21 +78,8 @@ class StoreBackendBase(metaclass=ABCMeta):
         structure_name: str,
         kind: StructureKind,
         key: Any,
-        key_type: KeyType | None,
     ) -> None:
         """Delete the packed item blob."""
-
-    @abstractmethod
-    def move_item(
-        self,
-        structure_name: str,
-        kind: StructureKind,
-        src_key: Any,
-        src_key_type: KeyType | None,
-        dst_key: Any,
-        dst_key_type: KeyType | None,
-    ) -> None:
-        """Move a packed item blob to a new key."""
 
     @abstractmethod
     def create_location(self, structure_name: str, kind: StructureKind) -> None:
@@ -110,5 +94,5 @@ class StoreBackendBase(metaclass=ABCMeta):
         self,
         structure_name: str,
         kind: StructureKind,
-    ) -> Iterable[tuple[Any, KeyType | None]]:
-        """Return ``(key, key_type)`` for every stored item (including tombstones)."""
+    ) -> Iterable[Any]:
+        """Return every stored item key (including tombstones)."""

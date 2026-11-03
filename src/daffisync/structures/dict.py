@@ -2,9 +2,9 @@ from collections.abc import Iterator, MutableMapping
 from typing import Any
 
 from ..constants import DEFAULT_TIMEOUT
+from ..marshallers.base import MarshallBase
 from ..protocol.enums import StructureKind
 from ..protocol.models import StructureAddress
-from ..serializers.base import SerializerBase
 from ..transport.base import TransportBase
 from .base import BaseStructure
 
@@ -19,13 +19,13 @@ class Dict(BaseStructure, MutableMapping):
         name: str,
         transport: TransportBase,
         timeout: int = DEFAULT_TIMEOUT,
-        serializer: SerializerBase | None = None,
+        marshaller: MarshallBase | None = None,
     ) -> None:
         super().__init__(
             name=name,
             transport=transport,
             timeout=timeout,
-            serializer=serializer,
+            marshaller=marshaller,
         )
         self._data: dict[Any, Any] = {}
         self._revisions: dict[Any, int] = {}
@@ -41,17 +41,20 @@ class Dict(BaseStructure, MutableMapping):
     def revision_snapshot(self) -> dict[Any, int]:
         return dict(self._revisions)
 
-    def apply_remote(self, address: StructureAddress, value: Any) -> None:
-        key = address.python_key()
+    def apply_remote(
+        self,
+        address: StructureAddress,
+        key: Any,
+        value: Any,
+    ) -> None:
         current = self._revisions.get(key, 0)
         if address.revision < current:
             return
         self._data[key] = value
         self._revisions[key] = address.revision
 
-    def forget_remote(self, address: StructureAddress) -> None:
-        key = address.python_key()
-        if key is None or key not in self._data:
+    def forget_remote(self, address: StructureAddress, key: Any) -> None:
+        if key not in self._data:
             return
         if address.revision < self._revisions.get(key, 0):
             return
@@ -64,7 +67,7 @@ class Dict(BaseStructure, MutableMapping):
     def __setitem__(self, key: Any, value: Any) -> None:
         raw = self._encode_message(
             key=key,
-            payload=self._mutation_payload(value=value),
+            value_payload=self._mutation_payload(value=value),
         )
         if key in self._data:
             self.ops.update_item(raw)
@@ -78,7 +81,7 @@ class Dict(BaseStructure, MutableMapping):
         self.ops.delete_item(
             self._encode_message(
                 key=key,
-                payload=self._mutation_payload(),
+                value_payload=self._mutation_payload(),
             )
         )
         del self._data[key]

@@ -4,12 +4,15 @@ from daffisync.backends import InMemoryBackend, StoreBackendBase
 from daffisync.constants import (
     CLIENT_APP_NAME_PREFIX,
     DEFAULT_TIMEOUT,
+    EMPTY_BYTES,
+    EMPTY_STR,
     HUB_APP_NAME,
+    empty_like,
 )
+from daffisync.marshallers import MarshallBase, MarshalledData, PickleMarshaler
 from daffisync.models import MutationEnvelope, ReconcileRequest
-from daffisync.protocol import KeyType, StructureAddress
+from daffisync.protocol import StructureAddress
 from daffisync.protocol.enums import KindFlag, StructureKind
-from daffisync.serializers import PickleSerializer, SerializerBase
 from daffisync.structures import (
     BaseStructure,
     Dict,
@@ -24,15 +27,17 @@ __all__ = [
     "CLIENT_APP_NAME_PREFIX",
     "DEFAULT_TIMEOUT",
     "Dict",
+    "EMPTY_BYTES",
+    "EMPTY_STR",
     "HUB_APP_NAME",
     "InMemoryBackend",
-    "KeyType",
     "KindFlag",
     "List",
+    "MarshallBase",
+    "MarshalledData",
     "MutationEnvelope",
-    "PickleSerializer",
+    "PickleMarshaler",
     "ReconcileRequest",
-    "SerializerBase",
     "StoreBackendBase",
     "StructureAddress",
     "StructureClientOps",
@@ -42,4 +47,5 @@ __all__ = [
     "TCPTransport",
     "TransportBase",
     "UnixTransport",
+    "empty_like",
 ]

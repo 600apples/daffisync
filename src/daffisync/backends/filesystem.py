@@ -4,19 +4,20 @@ Layout::
 
     <basedir>/<kind>/<structure_name>/<key-file>
         # packed blob: big-endian int64 revision + optional value bytes
+
+Filenames are ``base64url(pickle(key))`` so any pickleable key works.
 """
 
 from __future__ import annotations
 
 import base64
 import os
+import pickle
 import shutil
 import tempfile
 
 from pathlib import Path
 from typing import Any, Iterable
-
-import msgspec
 
 from daffisync.backends.base import (
     REVISION_HEADER_SIZE,
@@ -25,12 +26,6 @@ from daffisync.backends.base import (
     unpack_item,
 )
 from daffisync.protocol.enums import StructureKind
-from daffisync.protocol.models import KeyType
-
-
-class _FileKey(msgspec.Struct):
-    key_type: str | None
-    key: Any
 
 
 class FilesystemBackend(StoreBackendBase):
@@ -41,21 +36,14 @@ class FilesystemBackend(StoreBackendBase):
         self.basedir.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
-    def _filename(key: Any, key_type: KeyType | None) -> str:
-        payload = msgspec.msgpack.encode(
-            _FileKey(
-                key_type=None if key_type is None else key_type.value,
-                key=key,
-            )
-        )
+    def _filename(key: Any) -> str:
+        payload = pickle.dumps(key, protocol=pickle.HIGHEST_PROTOCOL)
         return base64.urlsafe_b64encode(payload).decode("ascii")
 
     @staticmethod
-    def _parse_filename(name: str) -> tuple[Any, KeyType | None]:
+    def _parse_filename(name: str) -> Any:
         raw = base64.urlsafe_b64decode(name.encode("ascii"))
-        parsed = msgspec.msgpack.decode(raw, type=_FileKey)
-        key_type = None if parsed.key_type is None else KeyType(parsed.key_type)
-        return parsed.key, key_type
+        return pickle.loads(raw)
 
     def _structure_dir(self, structure_name: str, kind: StructureKind) -> Path:
         path = (self.basedir / kind.value / structure_name).resolve()
@@ -68,12 +56,8 @@ class FilesystemBackend(StoreBackendBase):
         structure_name: str,
         kind: StructureKind,
         key: Any,
-        key_type: KeyType | None,
     ) -> Path:
-        return self._structure_dir(structure_name, kind) / self._filename(
-            key,
-            key_type,
-        )
+        return self._structure_dir(structure_name, kind) / self._filename(key)
 
     def _atomic_write(self, destination: Path, data: bytes) -> None:
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -102,9 +86,8 @@ class FilesystemBackend(StoreBackendBase):
         structure_name: str,
         kind: StructureKind,
         key: Any,
-        key_type: KeyType | None,
     ) -> tuple[bytes | None, int]:
-        path = self._item_path(structure_name, kind, key, key_type)
+        path = self._item_path(structure_name, kind, key)
         if not path.is_file():
             raise KeyError((kind, structure_name, key))
         return unpack_item(path.read_bytes())
@@ -114,16 +97,15 @@ class FilesystemBackend(StoreBackendBase):
         structure_name: str,
         kind: StructureKind,
         key: Any,
-        key_type: KeyType | None,
-        data: bytes | None,
+        value: bytes | None,
         revision: int,
     ) -> None:
-        if data is not None and not isinstance(data, bytes):
-            raise TypeError("Item data must be bytes or None")
+        if value is not None and not isinstance(value, bytes):
+            raise TypeError("Item value must be bytes or None")
 
         self._atomic_write(
-            self._item_path(structure_name, kind, key, key_type),
-            pack_item(data, revision),
+            self._item_path(structure_name, kind, key),
+            pack_item(value, revision),
         )
 
     def item_exists(
@@ -131,9 +113,8 @@ class FilesystemBackend(StoreBackendBase):
         structure_name: str,
         kind: StructureKind,
         key: Any,
-        key_type: KeyType | None,
     ) -> bool:
-        path = self._item_path(structure_name, kind, key, key_type)
+        path = self._item_path(structure_name, kind, key)
         if not path.is_file():
             return False
         return path.stat().st_size > REVISION_HEADER_SIZE
@@ -143,25 +124,8 @@ class FilesystemBackend(StoreBackendBase):
         structure_name: str,
         kind: StructureKind,
         key: Any,
-        key_type: KeyType | None,
     ) -> None:
-        self._item_path(structure_name, kind, key, key_type).unlink(missing_ok=True)
-
-    def move_item(
-        self,
-        structure_name: str,
-        kind: StructureKind,
-        src_key: Any,
-        src_key_type: KeyType | None,
-        dst_key: Any,
-        dst_key_type: KeyType | None,
-    ) -> None:
-        source = self._item_path(structure_name, kind, src_key, src_key_type)
-        destination = self._item_path(structure_name, kind, dst_key, dst_key_type)
-        if not source.is_file():
-            raise KeyError((kind, structure_name, src_key))
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        os.replace(source, destination)
+        self._item_path(structure_name, kind, key).unlink(missing_ok=True)
 
     def create_location(self, structure_name: str, kind: StructureKind) -> None:
         self._structure_dir(structure_name, kind).mkdir(parents=True, exist_ok=True)
@@ -175,12 +139,12 @@ class FilesystemBackend(StoreBackendBase):
         self,
         structure_name: str,
         kind: StructureKind,
-    ) -> Iterable[tuple[Any, KeyType | None]]:
+    ) -> Iterable[Any]:
         path = self._structure_dir(structure_name, kind)
         if not path.exists():
             return []
 
-        items: list[tuple[Any, KeyType | None]] = []
+        items: list[Any] = []
         for key_file in path.iterdir():
             if not key_file.is_file() or key_file.name.startswith("."):
                 continue
